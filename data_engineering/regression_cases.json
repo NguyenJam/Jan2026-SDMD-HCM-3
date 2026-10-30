@@ -1,0 +1,16 @@
+[
+  {"id": "known_word", "query": "world", "expected": {"status": "known", "selected_phones": ["W", "ER1", "L", "D"], "selection_required": false}},
+  {"id": "case_and_outer_space", "query": "  tEsT  ", "expected": {"status": "known", "selected_phones": ["T", "EH1", "S", "T"]}},
+  {"id": "read_requires_choice", "query": "read", "expected": {"status": "known", "variant_ids": [0, 1], "selection_required": true, "selected_phones": null}},
+  {"id": "read_unsuffixed", "query": "read", "variant_id": 0, "expected": {"status": "known", "selected_phones": ["R", "EH1", "D"], "selection_required": false}},
+  {"id": "read_alternate", "query": "read", "variant_id": 1, "expected": {"status": "known", "selected_phones": ["R", "IY1", "D"]}},
+  {"id": "stress_is_preserved", "query": "hello", "variant_id": 1, "expected": {"status": "known", "selected_phones": ["HH", "EH0", "L", "OW1"]}},
+  {"id": "three_entries", "query": "record", "expected": {"status": "known", "variant_ids": [0, 1, 2], "selection_required": true}},
+  {"id": "unsupported_word", "query": "vulehoangxyz", "expected": {"status": "oov", "variant_ids": [], "selected_phones": null}},
+  {"id": "empty_input", "query": "  ", "expected": {"status": "invalid_input", "selected_phones": null}},
+  {"id": "phrase_requires_tokenization", "query": "hello world", "expected": {"status": "invalid_input", "selected_phones": null}},
+  {"id": "invalid_variant", "query": "read", "variant_id": 99, "expected": {"status": "invalid_variant", "selected_phones": null}},
+  {"id": "punctuation_dictionary_entry", "query": "#hash-mark", "expected": {"status": "known", "selected_phones": ["HH", "AE1", "M", "AA2", "R", "K"]}},
+  {"id": "latin1_word", "query": "d\u00e9j\u00e0", "expected": {"status": "known"}},
+  {"id": "contraction", "query": "don't", "expected": {"status": "known"}}
+]

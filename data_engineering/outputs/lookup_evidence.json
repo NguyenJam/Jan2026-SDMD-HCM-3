@@ -1,0 +1,585 @@
+[
+  {
+    "id": "known_word",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "selected_phones": [
+        "W",
+        "ER1",
+        "L",
+        "D"
+      ],
+      "selection_required": false
+    },
+    "result": {
+      "query": "world",
+      "normalized_word": "WORLD",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "WORLD",
+          "word": "WORLD",
+          "variant_id": 0,
+          "phones": [
+            "W",
+            "ER1",
+            "L",
+            "D"
+          ],
+          "source_line": 131806
+        }
+      ],
+      "selected": {
+        "raw_label": "WORLD",
+        "word": "WORLD",
+        "variant_id": 0,
+        "phones": [
+          "W",
+          "ER1",
+          "L",
+          "D"
+        ],
+        "source_line": 131806
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "case_and_outer_space",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "selected_phones": [
+        "T",
+        "EH1",
+        "S",
+        "T"
+      ]
+    },
+    "result": {
+      "query": "  tEsT  ",
+      "normalized_word": "TEST",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "TEST",
+          "word": "TEST",
+          "variant_id": 0,
+          "phones": [
+            "T",
+            "EH1",
+            "S",
+            "T"
+          ],
+          "source_line": 119657
+        }
+      ],
+      "selected": {
+        "raw_label": "TEST",
+        "word": "TEST",
+        "variant_id": 0,
+        "phones": [
+          "T",
+          "EH1",
+          "S",
+          "T"
+        ],
+        "source_line": 119657
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "read_requires_choice",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "variant_ids": [
+        0,
+        1
+      ],
+      "selection_required": true,
+      "selected_phones": null
+    },
+    "result": {
+      "query": "read",
+      "normalized_word": "READ",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "READ",
+          "word": "READ",
+          "variant_id": 0,
+          "phones": [
+            "R",
+            "EH1",
+            "D"
+          ],
+          "source_line": 97882
+        },
+        {
+          "raw_label": "READ(1)",
+          "word": "READ",
+          "variant_id": 1,
+          "phones": [
+            "R",
+            "IY1",
+            "D"
+          ],
+          "source_line": 97883
+        }
+      ],
+      "selected": null,
+      "selection_required": true
+    }
+  },
+  {
+    "id": "read_unsuffixed",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "selected_phones": [
+        "R",
+        "EH1",
+        "D"
+      ],
+      "selection_required": false
+    },
+    "result": {
+      "query": "read",
+      "normalized_word": "READ",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "READ",
+          "word": "READ",
+          "variant_id": 0,
+          "phones": [
+            "R",
+            "EH1",
+            "D"
+          ],
+          "source_line": 97882
+        },
+        {
+          "raw_label": "READ(1)",
+          "word": "READ",
+          "variant_id": 1,
+          "phones": [
+            "R",
+            "IY1",
+            "D"
+          ],
+          "source_line": 97883
+        }
+      ],
+      "selected": {
+        "raw_label": "READ",
+        "word": "READ",
+        "variant_id": 0,
+        "phones": [
+          "R",
+          "EH1",
+          "D"
+        ],
+        "source_line": 97882
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "read_alternate",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "selected_phones": [
+        "R",
+        "IY1",
+        "D"
+      ]
+    },
+    "result": {
+      "query": "read",
+      "normalized_word": "READ",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "READ",
+          "word": "READ",
+          "variant_id": 0,
+          "phones": [
+            "R",
+            "EH1",
+            "D"
+          ],
+          "source_line": 97882
+        },
+        {
+          "raw_label": "READ(1)",
+          "word": "READ",
+          "variant_id": 1,
+          "phones": [
+            "R",
+            "IY1",
+            "D"
+          ],
+          "source_line": 97883
+        }
+      ],
+      "selected": {
+        "raw_label": "READ(1)",
+        "word": "READ",
+        "variant_id": 1,
+        "phones": [
+          "R",
+          "IY1",
+          "D"
+        ],
+        "source_line": 97883
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "stress_is_preserved",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "selected_phones": [
+        "HH",
+        "EH0",
+        "L",
+        "OW1"
+      ]
+    },
+    "result": {
+      "query": "hello",
+      "normalized_word": "HELLO",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "HELLO",
+          "word": "HELLO",
+          "variant_id": 0,
+          "phones": [
+            "HH",
+            "AH0",
+            "L",
+            "OW1"
+          ],
+          "source_line": 53747
+        },
+        {
+          "raw_label": "HELLO(1)",
+          "word": "HELLO",
+          "variant_id": 1,
+          "phones": [
+            "HH",
+            "EH0",
+            "L",
+            "OW1"
+          ],
+          "source_line": 53748
+        }
+      ],
+      "selected": {
+        "raw_label": "HELLO(1)",
+        "word": "HELLO",
+        "variant_id": 1,
+        "phones": [
+          "HH",
+          "EH0",
+          "L",
+          "OW1"
+        ],
+        "source_line": 53748
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "three_entries",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "variant_ids": [
+        0,
+        1,
+        2
+      ],
+      "selection_required": true
+    },
+    "result": {
+      "query": "record",
+      "normalized_word": "RECORD",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "RECORD",
+          "word": "RECORD",
+          "variant_id": 0,
+          "phones": [
+            "R",
+            "AH0",
+            "K",
+            "AO1",
+            "R",
+            "D"
+          ],
+          "source_line": 98458
+        },
+        {
+          "raw_label": "RECORD(1)",
+          "word": "RECORD",
+          "variant_id": 1,
+          "phones": [
+            "R",
+            "EH1",
+            "K",
+            "ER0",
+            "D"
+          ],
+          "source_line": 98459
+        },
+        {
+          "raw_label": "RECORD(2)",
+          "word": "RECORD",
+          "variant_id": 2,
+          "phones": [
+            "R",
+            "IH0",
+            "K",
+            "AO1",
+            "R",
+            "D"
+          ],
+          "source_line": 98460
+        }
+      ],
+      "selected": null,
+      "selection_required": true
+    }
+  },
+  {
+    "id": "unsupported_word",
+    "passed": true,
+    "expected": {
+      "status": "oov",
+      "variant_ids": [],
+      "selected_phones": null
+    },
+    "result": {
+      "query": "vulehoangxyz",
+      "normalized_word": "VULEHOANGXYZ",
+      "status": "oov",
+      "pronunciations": [],
+      "selected": null,
+      "selection_required": false,
+      "message": "This word is not in the pinned dictionary; no pronunciation is generated."
+    }
+  },
+  {
+    "id": "empty_input",
+    "passed": true,
+    "expected": {
+      "status": "invalid_input",
+      "selected_phones": null
+    },
+    "result": {
+      "query": "  ",
+      "normalized_word": "",
+      "status": "invalid_input",
+      "pronunciations": [],
+      "selected": null,
+      "selection_required": false,
+      "message": "Supply one dictionary token; phrase tokenization belongs to integration."
+    }
+  },
+  {
+    "id": "phrase_requires_tokenization",
+    "passed": true,
+    "expected": {
+      "status": "invalid_input",
+      "selected_phones": null
+    },
+    "result": {
+      "query": "hello world",
+      "normalized_word": "HELLO WORLD",
+      "status": "invalid_input",
+      "pronunciations": [],
+      "selected": null,
+      "selection_required": false,
+      "message": "Supply one dictionary token; phrase tokenization belongs to integration."
+    }
+  },
+  {
+    "id": "invalid_variant",
+    "passed": true,
+    "expected": {
+      "status": "invalid_variant",
+      "selected_phones": null
+    },
+    "result": {
+      "query": "read",
+      "normalized_word": "READ",
+      "status": "invalid_variant",
+      "pronunciations": [
+        {
+          "raw_label": "READ",
+          "word": "READ",
+          "variant_id": 0,
+          "phones": [
+            "R",
+            "EH1",
+            "D"
+          ],
+          "source_line": 97882
+        },
+        {
+          "raw_label": "READ(1)",
+          "word": "READ",
+          "variant_id": 1,
+          "phones": [
+            "R",
+            "IY1",
+            "D"
+          ],
+          "source_line": 97883
+        }
+      ],
+      "selected": null,
+      "selection_required": false,
+      "message": "Requested variant does not exist; choose an available variant_id."
+    }
+  },
+  {
+    "id": "punctuation_dictionary_entry",
+    "passed": true,
+    "expected": {
+      "status": "known",
+      "selected_phones": [
+        "HH",
+        "AE1",
+        "M",
+        "AA2",
+        "R",
+        "K"
+      ]
+    },
+    "result": {
+      "query": "#hash-mark",
+      "normalized_word": "#HASH-MARK",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "#HASH-MARK",
+          "word": "#HASH-MARK",
+          "variant_id": 0,
+          "phones": [
+            "HH",
+            "AE1",
+            "M",
+            "AA2",
+            "R",
+            "K"
+          ],
+          "source_line": 65
+        }
+      ],
+      "selected": {
+        "raw_label": "#HASH-MARK",
+        "word": "#HASH-MARK",
+        "variant_id": 0,
+        "phones": [
+          "HH",
+          "AE1",
+          "M",
+          "AA2",
+          "R",
+          "K"
+        ],
+        "source_line": 65
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "latin1_word",
+    "passed": true,
+    "expected": {
+      "status": "known"
+    },
+    "result": {
+      "query": "déjà",
+      "normalized_word": "DÉJÀ",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "DÉJÀ",
+          "word": "DÉJÀ",
+          "variant_id": 0,
+          "phones": [
+            "D",
+            "EY2",
+            "JH",
+            "AA1"
+          ],
+          "source_line": 35474
+        }
+      ],
+      "selected": {
+        "raw_label": "DÉJÀ",
+        "word": "DÉJÀ",
+        "variant_id": 0,
+        "phones": [
+          "D",
+          "EY2",
+          "JH",
+          "AA1"
+        ],
+        "source_line": 35474
+      },
+      "selection_required": false
+    }
+  },
+  {
+    "id": "contraction",
+    "passed": true,
+    "expected": {
+      "status": "known"
+    },
+    "result": {
+      "query": "don't",
+      "normalized_word": "DON'T",
+      "status": "known",
+      "pronunciations": [
+        {
+          "raw_label": "DON'T",
+          "word": "DON'T",
+          "variant_id": 0,
+          "phones": [
+            "D",
+            "OW1",
+            "N",
+            "T"
+          ],
+          "source_line": 33628
+        },
+        {
+          "raw_label": "DON'T(1)",
+          "word": "DON'T",
+          "variant_id": 1,
+          "phones": [
+            "D",
+            "OW1",
+            "N"
+          ],
+          "source_line": 33629
+        }
+      ],
+      "selected": null,
+      "selection_required": true
+    }
+  }
+]

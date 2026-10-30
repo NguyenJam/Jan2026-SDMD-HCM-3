@@ -1,0 +1,25 @@
+test_alternate_number_is_retained_even_without_unsuffixed_entry (test_data_engineering.ParserTests.test_alternate_number_is_retained_even_without_unsuffixed_entry) ... ok
+test_checksum_tampering_is_detected (test_data_engineering.ParserTests.test_checksum_tampering_is_detected) ... ok
+test_comments_blanks_and_hash_entry (test_data_engineering.ParserTests.test_comments_blanks_and_hash_entry) ... ok
+test_duplicate_key_is_rejected_instead_of_losing_an_entry (test_data_engineering.ParserTests.test_duplicate_key_is_rejected_instead_of_losing_an_entry) ... ok
+test_empty_lexicon_is_rejected (test_data_engineering.ParserTests.test_empty_lexicon_is_rejected) ... ok
+test_identical_sequences_with_distinct_ids_are_retained (test_data_engineering.ParserTests.test_identical_sequences_with_distinct_ids_are_retained) ... ok
+test_invalid_variant_never_falls_back (test_data_engineering.ParserTests.test_invalid_variant_never_falls_back) ... ok
+test_latin1_is_decoded_without_data_loss (test_data_engineering.ParserTests.test_latin1_is_decoded_without_data_loss) ... ok
+test_missing_pronunciation_is_rejected (test_data_engineering.ParserTests.test_missing_pronunciation_is_rejected) ... ok
+test_oov_and_invalid_input_never_return_a_selected_pronunciation (test_data_engineering.ParserTests.test_oov_and_invalid_input_never_return_a_selected_pronunciation) ... ok
+test_punctuation_is_not_removed (test_data_engineering.ParserTests.test_punctuation_is_not_removed) ... ok
+test_stress_and_declared_bare_vowel (test_data_engineering.ParserTests.test_stress_and_declared_bare_vowel) ... ok
+test_unknown_phones_and_illegal_stress_are_rejected (test_data_engineering.ParserTests.test_unknown_phones_and_illegal_stress_are_rejected) ... ok
+test_variants_are_not_overwritten_or_auto_selected (test_data_engineering.ParserTests.test_variants_are_not_overwritten_or_auto_selected) ... ok
+test_zero_variant_suffix_is_rejected (test_data_engineering.ParserTests.test_zero_variant_suffix_is_rejected) ... ok
+test_all_rows_are_accounted_for (test_data_engineering.PinnedDataTests.test_all_rows_are_accounted_for) ... ok
+test_inventory_distinguishes_base_phones_and_symbols (test_data_engineering.PinnedDataTests.test_inventory_distinguishes_base_phones_and_symbols) ... ok
+test_known_variants_stress_oov_and_encoding_cases (test_data_engineering.PinnedDataTests.test_known_variants_stress_oov_and_encoding_cases) ... ok
+test_profile_counts_match_independent_source_count (test_data_engineering.PinnedDataTests.test_profile_counts_match_independent_source_count) ... ok
+test_sources_match_lock (test_data_engineering.PinnedDataTests.test_sources_match_lock) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 1.322s
+
+OK

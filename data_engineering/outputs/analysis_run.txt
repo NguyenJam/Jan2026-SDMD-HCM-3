@@ -1,0 +1,19 @@
+{
+  "total_lines": 133910,
+  "comment_lines": 56,
+  "blank_lines": 0,
+  "pronunciation_entries": 133854,
+  "base_spellings": 125074,
+  "words_with_multiple_entries": 8154,
+  "alternate_entries": 8780,
+  "observed_base_phones": 39,
+  "declared_base_phones": 39,
+  "observed_phone_symbols": 69,
+  "declared_phone_symbols": 84,
+  "audio_samples": 0,
+  "minimum_phones_per_entry": 1,
+  "maximum_phones_per_entry": 32,
+  "maximum_entries_per_word": 4,
+  "non_ascii_labels": 1
+}
+Lookup regression cases: 14/14 passed

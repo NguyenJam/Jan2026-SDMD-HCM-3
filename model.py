@@ -6,6 +6,9 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import soundfile as sf
 import torch
 from kokoro import KPipeline
@@ -35,12 +38,29 @@ def generate_audio(text: str, output_path: Path, voice: str, speed: float) -> di
     waveform = np.concatenate(audio_parts)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     sf.write(output_path, waveform, SAMPLE_RATE, subtype="PCM_16")
+
+    stride = max(1, len(waveform) // 5000)
+    times = np.arange(0, len(waveform), stride) / SAMPLE_RATE
+    figure, axis = plt.subplots(figsize=(10, 3.8))
+    axis.plot(times, waveform[::stride], linewidth=0.55, color="#000000")
+    axis.set_title("Generated audio waveform")
+    axis.set_xlabel("Time (seconds)")
+    axis.set_ylabel("Amplitude")
+    axis.grid(True, linewidth=0.4, alpha=0.3)
+    figure.tight_layout()
+    figure.savefig(output_path.parent / "model_results.png", dpi=180)
+    plt.close(figure)
+
     return {
         "model": "Kokoro-82M",
         "voice": voice,
         "text": text,
         "sample_rate_hz": SAMPLE_RATE,
+        "channels": 1,
+        "audio_format": "WAV PCM 16-bit",
         "duration_seconds": round(len(waveform) / SAMPLE_RATE, 2),
+        "peak_amplitude": round(float(np.max(np.abs(waveform))), 4),
+        "rms_amplitude": round(float(np.sqrt(np.mean(np.square(waveform)))), 4),
         "wav_file": output_path.name,
         "inference_device": "cpu",
     }
@@ -68,7 +88,25 @@ def main() -> int:
             json.dumps(details, indent=2, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
+        metric_lines = [
+            "Audio generation run",
+            f"Model: {details['model']} (pretrained)",
+            f"Voice: {details['voice']}",
+            f"Device: {details['inference_device']}",
+            f"Duration: {details['duration_seconds']} seconds",
+            f"Sample rate: {details['sample_rate_hz']} Hz",
+            f"Format: {details['audio_format']}, mono",
+            f"Peak amplitude: {details['peak_amplitude']}",
+            f"RMS amplitude: {details['rms_amplitude']}",
+            f"Input text: {details['text']}",
+        ]
+        (args.output_dir / "metrics.txt").write_text(
+            "\n".join(metric_lines) + "\n",
+            encoding="utf-8",
+        )
         print(f"Audio written to {output_path}")
+        print(f"Waveform plot written to {args.output_dir / 'model_results.png'}")
+        print(f"Metrics written to {args.output_dir / 'metrics.txt'}")
         print(f"Run details written to {args.output_dir / 'run.json'}")
         return 0
     except (OSError, RuntimeError, ValueError, KeyError) as error:

@@ -1,1 +1,1 @@
-Hello world. This is Group H C M Three's project on audio generation using artificial intelligence.
+Hello, this is group HCM-3's project on audio generation using artificial intelligence

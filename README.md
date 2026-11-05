@@ -1,32 +1,30 @@
 # Audio generation demo
 
-This project turns a short text introduction into a WAV file. It uses Kokoro-82M, a pretrained text-to-speech model, to generate speech locally on the GitHub Actions runner. The demo does not use Fish Audio or an API key.
+This project converts a short English introduction into a WAV clip with the Kokoro-82M text-to-speech model and the `af_heart` voice. Each run also creates a waveform image and audio metrics.
 
-The default text is:
+## GitHub Actions
 
-> Hello world. This is Group H C M Three's project on audio generation using artificial intelligence.
-
-## Run in GitHub Actions
-
-Every push to `main`, pull request targeting `main`, or manual workflow run generates `audio_generation_demo.wav`. Open the completed run in **Actions** and download the `audio-generation-demo` artifact.
+The workflow runs when code is pushed to `main`, when a pull request targets `main`, or when started manually. It installs the project dependencies, generates the audio, and uploads the WAV, waveform, metrics, and run details as the `audio-generation-demo` artifact. Download the artifact from the completed Actions run.
 
 ## Run locally
 
-Use Python 3.12 for the pinned inference dependencies.
+Use Python 3.12:
 
 ```bash
 python -m pip install -r requirements.txt
-python model.py
+python model.py --output-dir artifacts
 ```
 
-To speak different text:
+The default text is:
+
+> Hello, this is group HCM-3's project on audio generation using artificial intelligence
+
+To provide different text, pass it with `--text`:
 
 ```bash
-python model.py --text "Hello world. This is our audio generation demo."
+python model.py --text "A short sentence to speak." --output-dir artifacts
 ```
 
-The selected voice is `af_heart`; change it with `--voice`. Inference runs on CPU. The workflow downloads the model weights when it runs, then saves the WAV and a small `run.json` file in `artifacts/`.
+## Model
 
-## Model and license
-
-Kokoro-82M is an open-weight pretrained speech model. This project uses the model for inference and does not train or fine-tune it. The source code and model weights are distributed under Apache 2.0 terms; see the [official model repository](https://github.com/hexgrad/kokoro) and [model card](https://huggingface.co/hexgrad/Kokoro-82M) for details.
+The project uses the published Kokoro-82M speech model for text-to-speech inference. See the [Kokoro repository](https://github.com/hexgrad/kokoro) and [Kokoro-82M model card](https://huggingface.co/hexgrad/Kokoro-82M) for model details and license information.

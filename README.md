@@ -1,10 +1,10 @@
 # Audio generation demo
 
-This project converts a short English introduction into a WAV clip with the Kokoro-82M text-to-speech model and the `af_heart` voice. Each run also creates a waveform image and audio metrics.
+This project converts a short English introduction into a WAV clip with the Kokoro-82M text-to-speech model and the `af_heart` voice. Each run also saves clip details in `metrics.txt` and `run.json`.
 
 ## GitHub Actions
 
-The workflow runs when code is pushed to `main`, when a pull request targets `main`, or when started manually. It installs the project dependencies, generates the audio, and uploads the WAV, waveform, metrics, and run details as the `audio-generation-demo` artifact. Download the artifact from the completed Actions run.
+The workflow runs when code is pushed to `main`, when a pull request targets `main`, or when started manually. It installs the project dependencies, generates the audio, and uploads the WAV, metrics, and run details as the `audio-generation-demo` artifact. Download the artifact from the completed Actions run.
 
 ## Run locally
 

@@ -1,6 +1,9 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
+tensorflow==2.21.0
+numpy>=1.26,<2.2
+matplotlib>=3.9,<4
+cmudict==1.1.3
 torch==2.10.0+cpu
 kokoro==0.9.4
 soundfile==0.13.1
 transformers<6
-numpy>=1.26,<3

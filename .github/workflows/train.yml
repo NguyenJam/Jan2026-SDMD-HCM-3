@@ -1,0 +1,59 @@
+name: Train audio generation model
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Cache downloaded speech model
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-${{ runner.os }}-py312-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            kokoro-${{ runner.os }}-py312-
+
+      - name: Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Train grapheme-to-phoneme model and generate audio
+        run: python model.py --output-dir artifacts
+
+      - name: Upload trained model and results
+        uses: actions/upload-artifact@v7
+        id: project_artifact
+        with:
+          name: audio-generation-training-results
+          path: artifacts/
+          if-no-files-found: error
+
+      - name: Add results link to run summary
+        env:
+          ARTIFACT_URL: ${{ steps.project_artifact.outputs.artifact-url }}
+        run: |
+          {
+            echo "## Audio generation model training"
+            echo "The grapheme-to-phoneme model was trained from CMUdict."
+            echo "[Download the training plot, metrics, trained model, and WAV](${ARTIFACT_URL})"
+          } >> "$GITHUB_STEP_SUMMARY"

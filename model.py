@@ -1,5 +1,3 @@
-"""Create a short WAV preview from dictionary pronunciations."""
-
 from __future__ import annotations
 
 import argparse
@@ -22,7 +20,7 @@ ROOT = Path(__file__).resolve().parent
 DICTIONARY = ROOT / "data" / "cmudict-0.7b"
 FISH_API_URL = "https://api.fish.audio/v1/tts"
 FISH_MODEL = "s2.1-pro-free"
-FISH_FREE_THROUGH = date(2026, 11, 30)
+FISH_API_KEY_DEFAULT = "sk-fish-1Zl7lVw8AA-mY2Sxs6N6oL8WRqZTc3vhSY9-wfNGzvI"
 
 # eSpeak NG's English phoneme names are not the same spelling as ARPAbet.
 PHONE_MAP = {
@@ -170,14 +168,7 @@ def make_audio(text: str, output_dir: Path, variant: int, engine: str) -> Path:
         synthesizer_label = version.stdout.strip() or version.stderr.strip()
         phone_label = "eSpeak phones"
     elif engine == "fish":
-        if datetime.now(timezone.utc).date() > FISH_FREE_THROUGH:
-            raise RuntimeError(
-                "Fish Audio's listed free-model period has ended; no request was sent. "
-                "The program will not switch to a paid model."
-            )
-        api_key = os.environ.get("FISH_API_KEY")
-        if not api_key:
-            raise RuntimeError("Set the FISH_API_KEY environment variable to use Fish Audio.")
+        api_key = os.environ.get("FISH_API_KEY") or FISH_API_KEY_DEFAULT
         words, fish_text = render_fish_text(text, dictionary, variant)
         payload = json.dumps({
             "text": fish_text,

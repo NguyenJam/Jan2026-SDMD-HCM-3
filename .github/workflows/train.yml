@@ -66,7 +66,5 @@ jobs:
               echo '```text'
               cat artifacts/fish/metrics.txt
               echo '```'
-            elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-              echo 'Fish generation is skipped for pull requests because repository secrets are not available to forked pull-request workflows.'
             fi
           } >> "$GITHUB_STEP_SUMMARY"

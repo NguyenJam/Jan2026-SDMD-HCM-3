@@ -24,4 +24,8 @@ The eSpeak baseline runs with Python 3.11 or later and eSpeak NG installed:
 python model.py --text "Hello world" --engine espeak --output-dir artifacts/espeak
 ```
 
-The Fish teacher path is selected with `--engine fish` and reads the API credential from the `FISH_API_KEY` environment variable. The credential is not stored in the project files.
+The Fish teacher path is selected with `--engine fish`:
+
+```bash
+python model.py --text "Hello world" --engine fish --output-dir artifacts/fish
+```

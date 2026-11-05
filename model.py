@@ -1,13 +1,18 @@
-"""Create a short WAV preview from CMUdict pronunciations."""
+"""Create a short WAV preview from dictionary pronunciations."""
 
 from __future__ import annotations
 
 import argparse
+from datetime import date, datetime, timezone
 import hashlib
+import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 import wave
 from collections import defaultdict
 from pathlib import Path
@@ -15,6 +20,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 DICTIONARY = ROOT / "data" / "cmudict-0.7b"
+FISH_API_URL = "https://api.fish.audio/v1/tts"
+FISH_MODEL = "s2.1-pro-free"
+FISH_FREE_THROUGH = date(2026, 11, 30)
 
 # eSpeak NG's English phoneme names are not the same spelling as ARPAbet.
 PHONE_MAP = {
@@ -36,7 +44,7 @@ STRESS_MARK = {0: "%", 1: "'", 2: ","}
 
 
 def read_dictionary(path: Path = DICTIONARY) -> dict[str, list[list[str]]]:
-    """Read each CMUdict pronunciation, keeping alternate entries in order."""
+    """Read pronunciations and keep alternate entries in order."""
     entries: dict[str, list[list[str]]] = defaultdict(list)
     with path.open(encoding="latin-1") as dictionary_file:
         for line in dictionary_file:
@@ -63,13 +71,13 @@ def map_pronunciation(phones: list[str]) -> list[str]:
     for phone in phones:
         match = re.fullmatch(r"([A-Z]+)([0-2])?", phone)
         if not match:
-            raise ValueError(f"Unexpected CMUdict phone: {phone}")
+            raise ValueError(f"Unexpected dictionary phone: {phone}")
         symbol, stress_text = match.groups()
         if symbol not in PHONE_MAP:
-            raise ValueError(f"No eSpeak mapping is defined for CMUdict phone {symbol}")
+            raise ValueError(f"No eSpeak mapping is defined for dictionary phone {symbol}")
         stress = int(stress_text) if stress_text is not None else None
         if symbol in VOWELS and stress is None:
-            raise ValueError(f"CMUdict vowel {phone} has no stress marker")
+            raise ValueError(f"Dictionary vowel {phone} has no stress marker")
 
         # In American English, unstressed AH is schwa; stressed AH is /ʌ/.
         espeak_phone = "@" if symbol == "AH" and stress == 0 else PHONE_MAP[symbol]
@@ -88,7 +96,7 @@ def render_text(text: str, dictionary: dict[str, list[list[str]]], variant: int)
         key = token.upper()
         pronunciations = dictionary.get(key)
         if not pronunciations:
-            raise ValueError(f"'{token}' is not in the bundled CMUdict 0.7b dictionary.")
+            raise ValueError(f"'{token}' is not in the bundled pronunciation data.")
         if variant > len(pronunciations):
             raise ValueError(
                 f"'{token}' has {len(pronunciations)} pronunciation(s); "
@@ -98,13 +106,27 @@ def render_text(text: str, dictionary: dict[str, list[list[str]]], variant: int)
         rendered_words.append({
             "word": token,
             "variant": variant,
-            "cmudict_phones": phones,
-            "espeak_phones": map_pronunciation(phones),
+            "source_phones": phones,
+            "synthesis_phones": map_pronunciation(phones),
         })
 
     # eSpeak uses | to separate phone symbols and || to separate words.
-    phonetic_text = "||".join("|".join(item["espeak_phones"]) for item in rendered_words)
+    phonetic_text = "||".join("|".join(item["synthesis_phones"]) for item in rendered_words)
     return rendered_words, phonetic_text
+
+
+def render_fish_text(text: str, dictionary: dict[str, list[list[str]]], variant: int) -> tuple[list[dict], str]:
+    """Add Fish Audio CMU Arpabet tags while preserving punctuation."""
+    words, _ = render_text(text, dictionary, variant)
+    word_iter = iter(words)
+    pattern = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)?")
+    normalized = text.replace("’", "'")
+
+    def phoneme_tag(_: re.Match[str]) -> str:
+        item = next(word_iter)
+        return f"<|phoneme_start|>{' '.join(item['source_phones'])}<|phoneme_end|>"
+
+    return words, pattern.sub(phoneme_tag, normalized)
 
 
 def dictionary_sha256(path: Path = DICTIONARY) -> str:
@@ -124,25 +146,70 @@ def validate_mapping(dictionary: dict[str, list[list[str]]]) -> tuple[int, int]:
             for phone in phones:
                 match = re.fullmatch(r"([A-Z]+)([0-2])?", phone)
                 if not match:
-                    raise ValueError(f"Unexpected CMUdict phone: {phone}")
+                    raise ValueError(f"Unexpected dictionary phone: {phone}")
                 seen.add(match.group(1))
     missing = sorted(seen - PHONE_MAP.keys())
     if missing:
-        raise ValueError(f"CMUdict phones without an eSpeak mapping: {', '.join(missing)}")
+        raise ValueError(f"Dictionary phones without an eSpeak mapping: {', '.join(missing)}")
     return len(dictionary), entries
 
 
-def make_audio(text: str, output_dir: Path, variant: int) -> Path:
+def make_audio(text: str, output_dir: Path, variant: int, engine: str) -> Path:
     dictionary = read_dictionary()
     words, phonetic_text = render_text(text, dictionary, variant)
-    executable = shutil.which("espeak-ng")
-    if executable is None:
-        raise RuntimeError("eSpeak NG is required. Install it before generating a WAV file.")
-
     output_dir.mkdir(parents=True, exist_ok=True)
     wav_path = output_dir / "audio_preview.wav"
-    command = [executable, "-v", "en-us", "-w", str(wav_path), f"[[{phonetic_text}]]"]
-    subprocess.run(command, check=True, capture_output=True, text=True)
+
+    if engine == "espeak":
+        executable = shutil.which("espeak-ng")
+        if executable is None:
+            raise RuntimeError("eSpeak NG is required. Install it before generating a WAV file.")
+        command = [executable, "-v", "en-us", "-w", str(wav_path), f"[[{phonetic_text}]]"]
+        subprocess.run(command, check=True, capture_output=True, text=True)
+        version = subprocess.run([executable, "--version"], check=True, capture_output=True, text=True)
+        synthesizer_label = version.stdout.strip() or version.stderr.strip()
+        phone_label = "eSpeak phones"
+    elif engine == "fish":
+        if datetime.now(timezone.utc).date() > FISH_FREE_THROUGH:
+            raise RuntimeError(
+                "Fish Audio's listed free-model period has ended; no request was sent. "
+                "The program will not switch to a paid model."
+            )
+        api_key = os.environ.get("FISH_API_KEY")
+        if not api_key:
+            raise RuntimeError("Set the FISH_API_KEY environment variable to use Fish Audio.")
+        words, fish_text = render_fish_text(text, dictionary, variant)
+        payload = json.dumps({
+            "text": fish_text,
+            "format": "wav",
+            "normalize": False,
+            "temperature": 0.7,
+            "top_p": 0.7,
+            "latency": "normal",
+        }).encode("utf-8")
+        request = urllib.request.Request(
+            FISH_API_URL,
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "audio/wav",
+                "model": FISH_MODEL,
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=180) as response:
+                wav_path.write_bytes(response.read())
+        except urllib.error.HTTPError as error:
+            details = error.read().decode("utf-8", errors="replace").strip()
+            raise RuntimeError(f"Fish Audio returned HTTP {error.code}: {details[:500]}") from error
+        except urllib.error.URLError as error:
+            raise RuntimeError(f"Could not reach Fish Audio: {error.reason}") from error
+        synthesizer_label = f"Fish Audio {FISH_MODEL} API"
+        phone_label = "Fish CMU Arpabet phones"
+    else:
+        raise ValueError(f"Unsupported synthesis engine: {engine}")
 
     with wave.open(str(wav_path), "rb") as wav_file:
         audio_info = {
@@ -155,19 +222,18 @@ def make_audio(text: str, output_dir: Path, variant: int) -> Path:
     if audio_info["frames"] == 0:
         raise RuntimeError("The synthesizer returned an empty WAV file.")
 
-    version = subprocess.run([executable, "--version"], check=True, capture_output=True, text=True)
     report = [
-        "CMUdict audio smoke check",
+        "Pronunciation-to-audio demo",
         f"Input text: {text}",
-        f"Dictionary: CMUdict 0.7b (SHA-256 {dictionary_sha256()})",
-        f"Synthesizer: {version.stdout.strip() or version.stderr.strip()}",
-        "Use: CI pronunciation-to-audio smoke check; not the selected production TTS engine.",
+        f"Pronunciation data: CMUdict 0.7b (SHA-256 {dictionary_sha256()})",
+        f"Synthesizer: {synthesizer_label}",
         "",
         "Pronunciations:",
     ]
     for item in words:
-        report.append(f"  {item['word']}: {' '.join(item['cmudict_phones'])}")
-        report.append(f"    eSpeak: {' '.join(item['espeak_phones'])}")
+        report.append(f"  {item['word']}: {' '.join(item['source_phones'])}")
+        phones = item["source_phones"] if engine == "fish" else item["synthesis_phones"]
+        report.append(f"    {phone_label}: {' '.join(phones)}")
     report.extend([
         "",
         "WAV output:",
@@ -181,9 +247,10 @@ def make_audio(text: str, output_dir: Path, variant: int) -> Path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Look up CMUdict phones and synthesize a short WAV preview.")
+    parser = argparse.ArgumentParser(description="Look up pronunciations and synthesize a short WAV preview.")
     parser.add_argument("--text", default="Hello world", help="English words to pronounce")
     parser.add_argument("--variant", type=int, default=1, help="One-based pronunciation choice for each word")
+    parser.add_argument("--engine", choices=("espeak", "fish"), default="espeak", help="Speech synthesizer")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts", help="Directory for WAV and metrics")
     parser.add_argument("--validate-only", action="store_true", help="Check the dictionary and phone mapping without audio")
     args = parser.parse_args()
@@ -195,11 +262,11 @@ def main() -> int:
         word_count, pronunciation_count = validate_mapping(dictionary)
         if args.validate_only:
             render_text(args.text, dictionary, args.variant)
-            print(f"CMUdict loaded: {word_count:,} words, {pronunciation_count:,} pronunciations.")
+            print(f"Pronunciation entries loaded: {word_count:,} words, {pronunciation_count:,} pronunciations.")
             print("All dictionary phones have a mapping; the sample input is present.")
             return 0
 
-        wav_path = make_audio(args.text, args.output_dir, args.variant)
+        wav_path = make_audio(args.text, args.output_dir, args.variant, args.engine)
         print(f"Audio written to {wav_path}")
         print(f"Metrics written to {args.output_dir / 'metrics.txt'}")
         return 0

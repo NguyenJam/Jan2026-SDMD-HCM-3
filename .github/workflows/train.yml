@@ -1,4 +1,4 @@
-name: CMUdict audio smoke check
+name: Pronunciation-to-audio demo
 
 on:
   push:
@@ -12,14 +12,14 @@ permissions:
 
 jobs:
   generate-audio:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
           cache: pip
@@ -32,12 +32,41 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
-      - name: Generate and validate pronunciation audio
-        run: python model.py --text "Hello world" --output-dir artifacts
+      - name: Generate eSpeak baseline
+        run: python model.py --text "Hello world" --engine espeak --output-dir artifacts/espeak
+
+      - name: Generate Fish teacher sample
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          FISH_API_KEY: ${{ secrets.FISH_API_KEY }}
+        run: python model.py --text "Hello world" --engine fish --output-dir artifacts/fish
 
       - name: Upload audio and run details
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
+        id: audio_artifact
+        if: always()
         with:
-          name: cmudict-audio-preview
+          name: audio-demo
           path: artifacts/
           if-no-files-found: error
+
+      - name: Add demo link to run summary
+        if: always()
+        env:
+          ARTIFACT_URL: ${{ steps.audio_artifact.outputs.artifact-url }}
+        run: |
+          {
+            echo "## Audio preview"
+            echo "[Download the generated WAV and run summary](${ARTIFACT_URL})"
+            echo
+            echo 'The artifact includes the eSpeak baseline.'
+            if [ -f artifacts/fish/metrics.txt ]; then
+              echo 'It also includes a Fish Audio teacher sample.'
+              echo
+              echo '```text'
+              cat artifacts/fish/metrics.txt
+              echo '```'
+            elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+              echo 'Fish generation is skipped for pull requests because repository secrets are not available to forked pull-request workflows.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

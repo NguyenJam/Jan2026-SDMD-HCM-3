@@ -2,30 +2,26 @@
 
 Group HCM-3 | COS40007 Artificial Intelligence Engineering
 
-The workflow generates two WAV files from the same short English phrase. We use Fish Audio as the teacher model for this project. eSpeak NG produces the baseline for comparison. Both outputs and their run details are uploaded as the `audio-demo` artifact.
+We use Fish Audio as the teacher model for this project and as the voice generator for the demo. CMUdict supplies the pronunciation and stress for each word. The program adds those pronunciations as phoneme tags, then Fish Audio generates the final WAV directly.
 
-## Teacher and baseline
+## Teacher model
 
-CMUdict supplies the word pronunciations and stress markers. The program inserts those pronunciations into Fish Audio's phoneme-control format, and Fish Audio generates a reference WAV from the tagged phrase. eSpeak NG synthesizes the same phrase as a baseline, so the two outputs can be compared.
+Fish Audio receives the phrase with its CMU Arpabet pronunciations and produces fluent speech while following those phone sequences. Its generated audio is the demo output, so there is no separate synthetic baseline voice. This version does not train or fine-tune a second model from Fish Audio's output.
 
-The Fish output serves as the teacher reference for pronunciation and audio quality. The current code does not train or fine-tune a separate student voice model.
+## GitHub Actions
 
-## Workflow outputs
+The workflow runs on pushes to `main`, pull requests targeting `main`, and manual dispatch. Each run generates a Fish Audio WAV and pronunciation details, then uploads them as the `audio-demo` artifact. Download the artifact from the completed run under the repository's **Actions** tab.
 
-The GitHub Actions workflow runs on pushes to `main`, pull requests targeting `main`, and manual dispatch. A push to `main` generates both the Fish teacher WAV and eSpeak baseline, then uploads them with pronunciation and audio details. Pull requests run the eSpeak baseline; Fish generation is skipped when repository secrets are unavailable to the pull-request workflow.
+## Run locally
 
-After a run completes, open it from the repository's **Actions** tab and download `audio-demo` to listen to and compare the WAV files.
-
-## Local use
-
-The eSpeak baseline runs with Python 3.11 or later and eSpeak NG installed:
+With Python 3.11 or later, generate a WAV with:
 
 ```bash
-python model.py --text "Hello world" --engine espeak --output-dir artifacts/espeak
+python model.py --text "Hello world" --output-dir artifacts/fish
 ```
 
-The Fish teacher path is selected with `--engine fish`:
+To validate the pronunciation data and sample text without generating audio:
 
 ```bash
-python model.py --text "Hello world" --engine fish --output-dir artifacts/fish
+python model.py --validate-only --text "Hello world"
 ```

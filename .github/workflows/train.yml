@@ -13,7 +13,7 @@ permissions:
 jobs:
   generate-audio:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -27,30 +27,33 @@ jobs:
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
 
-      - name: Generate README narration
-        run: python model.py --readme --output-dir artifacts/fish
+      - name: Train the audio student from the Fish teacher sample
+        run: python train_student.py --epochs 12 --output-dir artifacts/train
+
+      - name: Generate manifesto with the trained student
+        run: python model.py --demo --model artifacts/train/student_model.pt --output-dir artifacts/demo
 
       - name: Upload audio and run details
         uses: actions/upload-artifact@v7
         id: audio_artifact
         if: always()
         with:
-          name: audio-demo
+          name: manifesto-student-audio
           path: artifacts/
           if-no-files-found: error
 
       - name: Add demo link to run summary
-        if: always()
+        if: success()
         env:
           ARTIFACT_URL: ${{ steps.audio_artifact.outputs.artifact-url }}
         run: |
           {
-            echo "## README narration"
-            echo "[Download the generated WAV and run summary](${ARTIFACT_URL})"
+            echo "## Student audio demo"
+            echo "[Download the student WAV, model, metrics, and training curve](${ARTIFACT_URL})"
             echo
-            echo 'Fish Audio narrated the readable text in README.md. Code blocks and Markdown formatting were left out.'
+            echo 'The student was trained from Fish Audio teacher speech and generated this WAV without calling Fish Audio at inference.'
             echo
             echo '```text'
-            cat artifacts/fish/metrics.txt
+            cat artifacts/train/metrics.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

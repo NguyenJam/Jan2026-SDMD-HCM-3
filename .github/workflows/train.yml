@@ -70,6 +70,7 @@ jobs:
           dvc remote modify --local storage secret_access_key "$DAGSHUB_TOKEN"
 
       - name: Restore the latest DVC snapshot
+        id: dvc_restore
         if: env.DAGSHUB_TOKEN != '' && hashFiles('dvc.lock') != ''
         run: dvc pull --allow-missing
 
@@ -91,6 +92,7 @@ jobs:
         run: python monitor.py --mode post-train
 
       - name: Push model, data, and monitoring outputs to DVC storage
+        id: dvc_push
         if: env.DAGSHUB_TOKEN != ''
         run: dvc push
 
@@ -117,6 +119,8 @@ jobs:
           {
             echo "## Retraining and monitoring summary"
             echo "Event: ${{ github.event_name }}"
+            echo "DVC remote restore: ${{ steps.dvc_restore.outcome }}"
+            echo "DVC remote push: ${{ steps.dvc_push.outcome }}"
             echo "Data drift detected: ${{ steps.preflight.outputs.drift_detected }}"
             echo "Incoming rows: ${{ steps.preflight.outputs.incoming_rows }}"
             if [[ -f artifacts/run.json ]]; then

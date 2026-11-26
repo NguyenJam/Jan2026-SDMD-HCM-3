@@ -1,0 +1,1 @@
+# DVC outputs are intentionally included in the pipeline cache.

@@ -1,0 +1,34 @@
+stages:
+  prepare_data:
+    cmd: python prepare_new_data.py
+    deps:
+      - prepare_new_data.py
+      - data/new_data.csv
+    outs:
+      - data/prepared/new_data.csv
+      - data/prepared/data_quality.json
+
+  train:
+    cmd: python model.py --input-data data/prepared/new_data.csv
+    deps:
+      - model.py
+      - requirements.txt
+      - data/prepared/new_data.csv
+    outs:
+      - artifacts/g2p_model.keras
+      - artifacts/g2p_vocab.json
+      - artifacts/audio_generation_demo.wav
+      - artifacts/model_results.png
+      - artifacts/metrics.txt
+    metrics:
+      - artifacts/run.json
+
+  monitor:
+    cmd: python monitor.py --mode post-train
+    deps:
+      - monitor.py
+      - data/prepared/data_quality.json
+      - artifacts/run.json
+    outs:
+      - monitoring/reports/monitoring.json
+      - monitoring/alerts/alerts.json

@@ -1,0 +1,6 @@
+[core]
+	remote = storage
+
+['remote "storage"']
+	url = s3://dvc
+	endpointurl = https://dagshub.com/NguyenJam/Jan2026-SDMD-HCM-3.s3

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import json
 import os
 import random
@@ -27,6 +29,7 @@ from kokoro import KPipeline
 
 ROOT = Path(__file__).resolve().parent
 DEMO_TEXT = ROOT / "data" / "demo_text.txt"
+DEFAULT_UPDATE_DATA = ROOT / "data" / "prepared" / "new_data.csv"
 SAMPLE_RATE = 24000
 SEED = 42
 MAX_TRAIN_WORDS = 40000
@@ -78,8 +81,17 @@ def cmu_pronunciation_to_ipa(phones: list[str]) -> str | None:
     return "".join(result)
 
 
-def load_training_pairs() -> list[tuple[str, str]]:
+def histogram_bins(values: list[int]) -> dict[str, int]:
+    bins = {"1-4": 0, "5-8": 0, "9-12": 0, "13+": 0}
+    for value in values:
+        label = "1-4" if value <= 4 else "5-8" if value <= 8 else "9-12" if value <= 12 else "13+"
+        bins[label] += 1
+    return bins
+
+
+def load_training_pairs(update_data_path: Path = DEFAULT_UPDATE_DATA) -> tuple[list[tuple[str, str]], dict]:
     entries: list[tuple[str, str]] = []
+    phone_counts: dict[str, int] = {}
     seen: set[str] = set()
     skipped = 0
     for raw_word, pronunciations in cmudict.dict().items():
@@ -93,6 +105,7 @@ def load_training_pairs() -> list[tuple[str, str]]:
             skipped += 1
             continue
         entries.append((word, ipa))
+        phone_counts[word] = len(pronunciations[0])
         seen.add(word)
 
     if not entries:
@@ -104,8 +117,50 @@ def load_training_pairs() -> list[tuple[str, str]]:
         remaining = [pair for pair in entries if pair[0] not in required_words]
         sample_count = max(0, MAX_TRAIN_WORDS - len(required))
         entries = sorted(required + rng.sample(remaining, sample_count))
-    print(f"CMUdict examples: {len(entries)} selected; {skipped} entries skipped")
-    return entries
+
+    baseline_entries = list(entries)
+    baseline_by_word = dict(baseline_entries)
+    baseline_words = set(baseline_by_word)
+    baseline_phone_counts = {word: phone_counts[word] for word in baseline_words}
+    incoming_entries: list[tuple[str, str]] = []
+    corrected_existing = 0
+    if update_data_path.exists():
+        with update_data_path.open("r", newline="", encoding="utf-8-sig") as stream:
+            reader = csv.DictReader(stream)
+            if not reader.fieldnames or not {"word", "pronunciation"}.issubset(reader.fieldnames):
+                raise ValueError("Prepared update data must contain word and pronunciation columns.")
+            for row in reader:
+                word = (row.get("word") or "").strip().lower()
+                phone_tokens = (row.get("pronunciation") or "").strip().upper().split()
+                ipa = cmu_pronunciation_to_ipa(phone_tokens)
+                if not re.fullmatch(r"[a-z']+", word) or not phone_tokens or ipa is None:
+                    raise ValueError(f"Invalid prepared pronunciation row for {word!r}.")
+                if len(word) > MAX_WORD_LENGTH or len(ipa) + 1 > MAX_PHONE_LENGTH:
+                    raise ValueError(f"Prepared update exceeds model length limits for {word!r}.")
+                incoming_entries.append((word, ipa))
+                if word in baseline_words and baseline_by_word[word] != ipa:
+                    corrected_existing += 1
+                phone_counts[word] = len(phone_tokens)
+
+    merged = dict(baseline_entries)
+    for word, ipa in incoming_entries:
+        merged[word] = ipa
+    entries = sorted(merged.items())
+    incoming_words = {word for word, _ in incoming_entries}
+    summary = {
+        "baseline_examples": len(baseline_entries),
+        "incoming_examples": len(incoming_entries),
+        "new_examples": sum(word not in baseline_words for word in incoming_words),
+        "corrected_examples": corrected_existing,
+        "total_examples": len(entries),
+        "baseline_word_length_histogram": histogram_bins([len(word) for word, _ in baseline_entries]),
+        "incoming_word_length_histogram": histogram_bins([len(word) for word in incoming_words]),
+        "baseline_phone_count_histogram": histogram_bins([baseline_phone_counts[word] for word in baseline_words]),
+        "incoming_phone_count_histogram": histogram_bins([phone_counts[word] for word in incoming_words]),
+        "incoming_word_count": len(incoming_words),
+    }
+    print(f"CMUdict examples: {len(baseline_entries)} baseline; {len(incoming_entries)} incoming; {skipped} entries skipped")
+    return entries, summary
 
 
 def build_arrays(
@@ -256,7 +311,7 @@ def phonemize_text(
     return "".join(output).strip(), usage
 
 
-def train_g2p(output_dir: Path):
+def train_g2p(output_dir: Path, update_data_path: Path = DEFAULT_UPDATE_DATA):
     random.seed(SEED)
     np.random.seed(SEED)
     tf.keras.utils.set_random_seed(SEED)
@@ -266,7 +321,7 @@ def train_g2p(output_dir: Path):
     except RuntimeError:
         pass
 
-    pairs = load_training_pairs()
+    pairs, data_summary = load_training_pairs(update_data_path)
     characters = {char for word, _ in pairs for char in word}
     phone_characters = {char for _, pronunciation in pairs for char in pronunciation}
     character_vocab = {"<pad>": 0, "<start>": 1, "<end>": 2, "<unk>": 3}
@@ -277,7 +332,11 @@ def train_g2p(output_dir: Path):
         phone_vocab[char] = len(phone_vocab)
 
     rng = np.random.default_rng(SEED)
-    required_indices = [i for i, pair in enumerate(pairs) if pair[0] in DEMO_TRAIN_WORDS]
+    update_words = set()
+    if update_data_path.exists():
+        with update_data_path.open("r", newline="", encoding="utf-8-sig") as stream:
+            update_words = {row["word"].strip().lower() for row in csv.DictReader(stream) if row.get("word")}
+    required_indices = [i for i, pair in enumerate(pairs) if pair[0] in (DEMO_TRAIN_WORDS | update_words)]
     required_index_set = set(required_indices)
     remaining_indices = np.array([i for i in range(len(pairs)) if i not in required_index_set])
     remaining_indices = rng.permutation(remaining_indices)
@@ -330,6 +389,8 @@ def train_g2p(output_dir: Path):
 
     output_dir.mkdir(parents=True, exist_ok=True)
     training_model.save(output_dir / "g2p_model.keras")
+    model_digest = hashlib.sha256((output_dir / "g2p_model.keras").read_bytes()).hexdigest()
+    data_digest = hashlib.sha256(update_data_path.read_bytes()).hexdigest() if update_data_path.exists() else "none"
     (output_dir / "g2p_vocab.json").write_text(
         json.dumps({"characters": character_vocab, "phonemes": phone_vocab}, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -349,6 +410,9 @@ def train_g2p(output_dir: Path):
         "training_seconds": round(training_seconds, 2),
         "g2p_architecture": "Character-level LSTM encoder-decoder trained from scratch",
         "speech_synthesis_model": "Kokoro-82M pretrained acoustic model",
+        "model_version": model_digest[:12],
+        "data_version": data_digest[:12],
+        **data_summary,
     }
     return training_model, encoder_model, decoder_model, character_vocab, phone_vocab, metrics
 
@@ -408,6 +472,10 @@ def write_metrics(output_dir: Path, training_metrics: dict, audio_metrics: dict)
         "Audio generation model training run",
         f"Dataset: {training_metrics['dataset']}",
         f"Dictionary entries used: {training_metrics['dataset_examples_used']}",
+        f"Baseline training examples: {training_metrics['baseline_examples']}",
+        f"Incoming pronunciation rows: {training_metrics['incoming_examples']}",
+        f"New words added: {training_metrics['new_examples']}",
+        f"Existing pronunciations corrected: {training_metrics['corrected_examples']}",
         f"Training examples: {training_metrics['training_examples']}",
         f"Validation examples: {training_metrics['validation_examples']}",
         f"G2P model: {training_metrics['g2p_architecture']}",
@@ -441,6 +509,8 @@ def main() -> int:
     parser.add_argument("--voice", default="af_heart", help="Kokoro English voice")
     parser.add_argument("--speed", type=float, default=0.96, help="Speech rate")
     parser.add_argument("--output-dir", type=Path, default=ROOT / "artifacts")
+    parser.add_argument("--input-data", type=Path, default=DEFAULT_UPDATE_DATA,
+                        help="Prepared CSV with word and CMU ARPAbet pronunciation columns")
     args = parser.parse_args()
 
     try:
@@ -451,7 +521,7 @@ def main() -> int:
             raise ValueError("The text to speak is empty.")
 
         (training_model, encoder_model, decoder_model, character_vocab,
-         phone_vocab, training_metrics) = train_g2p(args.output_dir)
+         phone_vocab, training_metrics) = train_g2p(args.output_dir, args.input_data)
         ipa_text, phoneme_usage = phonemize_text(
             text, encoder_model, decoder_model, character_vocab, phone_vocab
         )

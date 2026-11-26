@@ -1,34 +1,49 @@
-# Audio generation model
+# Audio Generation Project: Retraining and Monitoring
 
-This project trains a character-level LSTM that maps words to phonemes using CMUdict pronunciation labels, installed through the `cmudict` package. The model predicts IPA for the input sentence. Known words are checked against the dictionary to correct mismatched predictions; words missing from the dictionary use the model's prediction. The resulting IPA is passed to Kokoro-82M to synthesize the WAV file. Kokoro supplies acoustic speech synthesis, while the grapheme-to-phoneme model is trained by this project on each run.
+This project updates a grapheme-to-phoneme model from pronunciation data and produces a short speech sample. A GitHub Actions workflow validates updates, checks for distribution drift, retrains the model when triggered, records evaluation results, and uploads the run outputs.
 
-## Run
+## Project files
 
-Use Python 3.12:
+- `model.py` trains the character-level LSTM pronunciation model and generates the audio sample.
+- `prepare_new_data.py` validates the incoming pronunciation CSV.
+- `monitor.py` checks data distributions and model metrics, then records monitoring results and alerts.
+- `dvc.yaml` defines data preparation, training, and monitoring stages.
+- `.github/workflows/train.yml` runs the pipeline on data/code pushes, weekly, or manually.
+- `data/new_data.csv` is the current labelled update batch. Replace or extend this file when adding pronunciation examples.
+
+## Update data format
+
+Use a UTF-8 CSV with the following two columns. Pronunciations use CMU ARPAbet tokens separated by spaces.
+
+```csv
+word,pronunciation
+example,IH0 G Z AE1 M P AH0 L
+```
+
+Push a valid update to `data/new_data.csv`. The workflow rejects malformed rows before training. New words are included in training; the existing validation split is retained for comparison.
+
+## Workflow runs
+
+The workflow starts on:
+
+- A push to `main` that changes project code, dependencies, DVC configuration, or `data/new_data.csv`.
+- Its weekly schedule.
+- A manual run with either `retrain` or `monitor` selected.
+
+A run checks word-length and phone-count distributions using the Population Stability Index. A score at or above `0.20` triggers retraining. Scheduled runs and the default manual option run the full pipeline. A manual monitoring-only run updates monitoring records when the preflight check does not request retraining.
+
+## DVC storage setup
+
+The DVC remote is configured for the DagsHub storage endpoint associated with this project. To enable remote pull and push, link the repository in DagsHub and add a repository Actions secret named `DAGSHUB_TOKEN`. The workflow uses this secret for the remote credentials; the token is not stored in the source files. Without the secret, the workflow still trains and uploads its run files as an Actions artifact, while DVC remote synchronization is skipped.
+
+DVC records pipeline stage hashes in `dvc.lock`. Include that lock file in the repository after the first successful `dvc repro` so a later run can restore the matching cached model and monitoring outputs before processing new changes.
+
+## Run locally
 
 ```bash
 python -m pip install -r requirements.txt
-python model.py --output-dir artifacts
+python prepare_new_data.py
+dvc repro
 ```
 
-The default sentence is stored in `data/demo_text.txt`. To synthesize different text:
-
-```bash
-python model.py --text "A short sentence to speak." --output-dir artifacts
-```
-
-## Outputs
-
-The run writes these files to the output directory:
-
-- `audio_generation_demo.wav`: synthesized speech.
-- `model_results.png`: training and validation loss by epoch.
-- `metrics.txt`: dataset, training, validation and audio measurements.
-- `run.json`: the same run details in structured form.
-- `g2p_model.keras` and `g2p_vocab.json`: trained model and its vocabularies.
-
-## Automated run
-
-The workflow in `.github/workflows/train.yml` starts on pushes or pull requests to `main` and can also be started manually. It installs the dependencies, trains the grapheme-to-phoneme model, generates the speech sample, and uploads the output files as one artifact.
-
-The voice synthesis step uses the published [Kokoro-82M model](https://huggingface.co/hexgrad/Kokoro-82M).
+The default demo text is stored in `data/demo_text.txt`. The generated outputs are written to `artifacts/`, with monitoring reports and any alerts written under `monitoring/`.

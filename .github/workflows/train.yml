@@ -1,19 +1,44 @@
-name: Train audio generation model
+name: Retrain and monitor pronunciation model
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches: [main, "feat/task3-retraining-monitoring"]
+    paths:
+      - "model.py"
+      - "prepare_new_data.py"
+      - "monitor.py"
+      - "data/new_data.csv"
+      - "data/demo_text.txt"
+      - "requirements.txt"
+      - "dvc.yaml"
+      - ".dvc/**"
+      - ".github/workflows/train.yml"
+  schedule:
+    - cron: "17 2 * * 1"
   workflow_dispatch:
+    inputs:
+      run_mode:
+        description: "Choose a full retraining run or monitoring only"
+        type: choice
+        required: true
+        default: retrain
+        options:
+          - retrain
+          - monitor
 
 permissions:
   contents: read
 
+concurrency:
+  group: pronunciation-retraining-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  train:
+  retrain-monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
+    env:
+      DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
     steps:
       - name: Check out project
         uses: actions/checkout@v7
@@ -24,7 +49,7 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Cache downloaded speech model
+      - name: Cache speech model files
         uses: actions/cache@v5
         with:
           path: ~/.cache/huggingface/hub
@@ -37,23 +62,78 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
-      - name: Train grapheme-to-phoneme model and generate audio
-        run: python model.py --output-dir artifacts
+      - name: Configure private DVC credentials
+        if: env.DAGSHUB_TOKEN != ''
+        run: |
+          dvc remote modify --local storage access_key_id "$DAGSHUB_TOKEN"
+          dvc remote modify --local storage secret_access_key "$DAGSHUB_TOKEN"
 
-      - name: Upload trained model and results
+      - name: Restore the latest DVC snapshot
+        if: env.DAGSHUB_TOKEN != '' && hashFiles('dvc.lock') != ''
+        run: dvc pull --allow-missing
+
+      - name: Validate and prepare incoming pronunciation data
+        run: python prepare_new_data.py
+
+      - name: Check for data drift
+        id: preflight
+        run: >-
+          python monitor.py --mode preflight
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: Run DVC training and monitoring pipeline
+        if: github.event_name != 'workflow_dispatch' || inputs.run_mode == 'retrain' || steps.preflight.outputs.drift_detected == 'true'
+        run: dvc repro --force
+
+      - name: Refresh monitoring report
+        if: github.event_name == 'workflow_dispatch' && inputs.run_mode == 'monitor' && steps.preflight.outputs.drift_detected != 'true'
+        run: python monitor.py --mode post-train
+
+      - name: Push model, data, and monitoring outputs to DVC storage
+        if: env.DAGSHUB_TOKEN != ''
+        run: dvc push
+
+      - name: Add drift notification to the run summary
+        if: steps.preflight.outputs.drift_detected == 'true'
+        run: echo "::warning::Data drift was detected. The retraining pipeline was selected."
+
+      - name: Upload model and monitoring records
         uses: actions/upload-artifact@v7
         id: project_artifact
         with:
-          name: audio-generation-training-results
-          path: artifacts/
-          if-no-files-found: error
+          name: pronunciation-retraining-monitoring-${{ github.run_number }}
+          path: |
+            artifacts/
+            data/prepared/data_quality.json
+            monitoring/
+            dvc.lock
+          if-no-files-found: warn
 
-      - name: Add results link to run summary
+      - name: Summarize this run
         env:
           ARTIFACT_URL: ${{ steps.project_artifact.outputs.artifact-url }}
         run: |
           {
-            echo "## Audio generation model training"
-            echo "The grapheme-to-phoneme model was trained from CMUdict."
-            echo "[Download the training plot, metrics, trained model, and WAV](${ARTIFACT_URL})"
+            echo "## Retraining and monitoring summary"
+            echo "Event: ${{ github.event_name }}"
+            echo "Data drift detected: ${{ steps.preflight.outputs.drift_detected }}"
+            echo "Incoming rows: ${{ steps.preflight.outputs.incoming_rows }}"
+            if [[ -f artifacts/run.json ]]; then
+              python - <<'PY'
+          import json
+          from pathlib import Path
+
+          run = json.loads(Path("artifacts/run.json").read_text(encoding="utf-8"))
+          print(f"Training epochs: {run.get('epochs_completed', 'not recorded')}")
+          print(f"Validation phone-token accuracy: {run.get('validation_phone_token_accuracy', 'not recorded')}")
+          print(f"Validation exact-pronunciation accuracy: {run.get('validation_exact_pronunciation_accuracy_sample', 'not recorded')}")
+
+          report_path = Path("monitoring/reports/monitoring.json")
+          if report_path.exists():
+              report = json.loads(report_path.read_text(encoding="utf-8"))
+              print(f"Monitoring status: {report.get('status', 'not recorded')}")
+              print(f"Monitoring alerts: {len(report.get('findings', []))}")
+          PY
+            fi
+            echo "[Download model, audio, data-quality, and monitoring outputs](${ARTIFACT_URL})"
           } >> "$GITHUB_STEP_SUMMARY"

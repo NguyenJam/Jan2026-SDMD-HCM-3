@@ -1,0 +1,86 @@
+schema: '2.0'
+stages:
+  prepare_data:
+    cmd: python prepare_new_data.py
+    deps:
+    - path: data/new_data.csv
+      hash: md5
+      md5: 59facc7c42663011f38a885cdda94632
+      size: 2617
+    - path: prepare_new_data.py
+      hash: md5
+      md5: b0d5f501bb81029a72ddf5d371c6fc0f
+      size: 3997
+    outs:
+    - path: data/prepared/data_quality.json
+      hash: md5
+      md5: c24cb8bc54b89a71c5bf7c4fe80b5b9a
+      size: 349
+    - path: data/prepared/new_data.csv
+      hash: md5
+      md5: 59facc7c42663011f38a885cdda94632
+      size: 2617
+  train:
+    cmd: python model.py --input-data data/prepared/new_data.csv
+    deps:
+    - path: data/prepared/new_data.csv
+      hash: md5
+      md5: 59facc7c42663011f38a885cdda94632
+      size: 2617
+    - path: model.py
+      hash: md5
+      md5: fc135e9316afd1ee8e57228142529e04
+      size: 25985
+    - path: requirements.txt
+      hash: md5
+      md5: 3d0b2a031c98b75bb40ddd6411510546
+      size: 207
+    outs:
+    - path: artifacts/audio_generation_demo.wav
+      hash: md5
+      md5: 1bb44ccdbc1c4fe96baedb51f146b28a
+      size: 364844
+    - path: artifacts/g2p_model.keras
+      hash: md5
+      md5: 2e6579a9cf33f8a14d356135704adacb
+      size: 1477395
+    - path: artifacts/g2p_vocab.json
+      hash: md5
+      md5: 7c35415573264828d8e8e44d140d6100
+      size: 1137
+    - path: artifacts/metrics.txt
+      hash: md5
+      md5: 6e040053841fc6e6fc039bd73df1b3d4
+      size: 926
+    - path: artifacts/model_results.png
+      hash: md5
+      md5: 62f803d501389e42fcd7c1443048fa6f
+      size: 58456
+    - path: artifacts/run.json
+      hash: md5
+      md5: 08fb1915e3d5d376878b6797fc86658d
+      size: 1994
+  monitor:
+    cmd: python monitor.py --mode post-train
+    deps:
+    - path: artifacts/run.json
+      hash: md5
+      md5: 08fb1915e3d5d376878b6797fc86658d
+      size: 1994
+    - path: data/prepared/data_quality.json
+      hash: md5
+      md5: c24cb8bc54b89a71c5bf7c4fe80b5b9a
+      size: 349
+    - path: monitor.py
+      hash: md5
+      md5: bae94085b0199157791d2ed25d54d1f9
+      size: 8468
+    outs:
+    - path: monitoring/alerts/alerts.json
+      hash: md5
+      md5: 24c7b956965a621774aee3bde6a878be
+      size: 93
+    - path: monitoring/reports/monitoring.json
+      hash: md5
+      md5: 92d5f3e30555c2975d2f92d90f73d34f
+      size: 757
